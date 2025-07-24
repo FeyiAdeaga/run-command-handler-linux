@@ -22,13 +22,22 @@ var immediateGSInTerminalStatusLock = sync.Mutex{}
 // If an error occurs reporting the status, it will be logged and returned.
 //
 // This function is used by default for reporting status to the local file system unless a different method is specified.
-func ReportStatusToLocalFile(ctx *log.Context, hEnv types.HandlerEnvironment, metadata types.RCMetadata, statusType types.StatusType, c types.Cmd, msg string) error {
+func ReportStatusToLocalFile(ctx *log.Context, hEnv types.HandlerEnvironment, metadata types.RCMetadata, statusType types.StatusType, c types.Cmd, msg string, exitcode ...int) error {
 	if !c.ShouldReportStatus {
 		ctx.Log("status", "not reported for operation (by design)")
 		return nil
 	}
+	var rootStatusJson []byte
+	var err error
 
-	rootStatusJson, err := getRootStatusJson(ctx, statusType, c, msg, true, metadata.ExtName)
+	if c.Functions.Pre == nil {
+		rootStatusJson, err = getRootStatusJson(ctx, statusType, c, msg, true, metadata.ExtName)
+	} else {
+		var errorcode = constants.TranslateExitCodeToErrorClarification(exitcode[0])
+		rootStatusJson, err = getRootStatusJsonWithErrorCalrification(ctx, statusType, c, msg, true, metadata.ExtName, errorcode)
+
+	}
+
 	if err != nil {
 		return errors.Wrap(err, "failed to get json for status report")
 	}
